@@ -7,6 +7,7 @@ include(
 
     "components:data-collector",
     "components:profile",
+    "components:listings-data",
     "components:data-analyzer",
 
     "support:database-support",
