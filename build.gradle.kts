@@ -7,6 +7,7 @@ subprojects {
     if (listOf("applications", "components", "support").contains(name)) return@subprojects
 
     apply(plugin = "kotlin")
+    apply(plugin = "java-test-fixtures")
 
     repositories {
         mavenCentral()
