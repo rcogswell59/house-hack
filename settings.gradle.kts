@@ -9,6 +9,7 @@ include(
     "components:profile",
     "components:listings-data",
     "components:rentcast-client",
+    "components:parcel-import",
     "components:data-analyzer",
 
     "support:database-support",

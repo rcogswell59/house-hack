@@ -1,0 +1,71 @@
+package io.initialcapacity.househack.parcels
+
+import io.initialcapacity.househack.listings.AddressNormalizer
+import io.initialcapacity.househack.listings.ListingRepository
+import io.initialcapacity.househack.listings.ParcelFactRepository
+import io.initialcapacity.househack.profile.ProfileRepository
+import io.initialcapacity.workflow.CollectorTask
+import io.initialcapacity.workflow.Worker
+import kotlinx.coroutines.runBlocking
+import org.slf4j.LoggerFactory
+
+/**
+ * Daily: (1) link every active listing without a parcel via point lookup, falling back to a normalized-address match;
+ * (2) sweep the buyer's search radius tile by tile for multi-family parcels so the analyzer has unit counts and values.
+ */
+class ImportParcelsWorker(
+    private val source: ParcelSource,
+    private val parcels: ParcelFactRepository,
+    private val listings: ListingRepository,
+    private val profiles: ProfileRepository,
+    private val sweep: Boolean = true,
+    private val tileDegrees: Double = 0.1,
+    private val radiusMiles: Double = 30.0,
+    override val name: String = "import-parcels",
+) : Worker<CollectorTask> {
+    private val logger = LoggerFactory.getLogger(this.javaClass)
+
+    override fun execute(task: CollectorTask) {
+        val profile = profiles.findFirst() ?: run { logger.warn("no profile yet; skipping parcel import"); return }
+
+        linkListings()
+        if (sweep) sweepRadius(profile.workplaceLat, profile.workplaceLng)
+    }
+
+    private fun linkListings() {
+        var linked = 0
+        for (listing in listings.findActive()) {
+            val id = listing.id!!
+            if (parcels.findForListing(id) != null) continue
+
+            val lat = listing.lat
+            val lng = listing.lng
+            val byPoint = if (lat != null && lng != null) runBlocking { source.parcelAt(lat, lng) } else null
+            val match = byPoint?.also { parcels.upsertAll(listOf(it)) }
+                ?: parcels.findByAddressNorm(AddressNormalizer.normalize(listing.address))
+
+            if (match != null) {
+                parcels.linkListing(id, match.parcelId)
+                linked++
+            } else {
+                logger.info("no parcel found for listing {} ({})", id, listing.address)
+            }
+        }
+        logger.info("linked {} listings to parcels", linked)
+    }
+
+    private fun sweepRadius(lat: Double, lng: Double) {
+        val tiles = Envelope.around(lat, lng, radiusMiles).tiles(tileDegrees)
+        var imported = 0
+        tiles.forEachIndexed { i, tile ->
+            try {
+                val facts = runBlocking { source.multiFamilyParcels(tile) }
+                imported += parcels.upsertAll(facts)
+                logger.info("tile {}/{}: {} multi-family parcels", i + 1, tiles.size, facts.size)
+            } catch (e: Exception) {
+                logger.warn("tile {}/{} failed: {}", i + 1, tiles.size, e.message)
+            }
+        }
+        logger.info("sweep complete: {} parcel rows upserted across {} tiles", imported, tiles.size)
+    }
+}

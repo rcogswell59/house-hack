@@ -47,7 +47,7 @@ Collector and analyzer never talk to each other; they collaborate through the da
 ### Gradle modules (additions to the starter)
 - `components/listings-data` — repositories + migrations shared by all three apps (Postgres via HikariCP + plain JDBC; Flyway for migrations).
 - `components/rentcast-client` — `RentCastClient` interface + HTTP impl (Ktor client) + `FakeRentCastClient` for tests. Exposes `searchSaleListings(area, unitsMin, unitsMax)`, `rentEstimate(address, beds, baths, sqft)`.
-- `components/bcpao-import` — downloads `WebData.zip`, parses the parcel table, upserts `parcel_facts`. Stream-parse; never load 225 MB into memory. **Required for C-level:** RentCast sale listings carry no unit count; `parcel_facts.units` (from BCPAO land-use/living-units) is the source of truth, with `ceil(bedrooms / 2)` as a flagged fallback when no parcel matches.
+- `components/parcel-import` — (changed 2026-10-21: BCPAO zip is bot-blocked; see docs/course/research/parcel-data-source.md) queries the Florida DOR statewide cadastral FeatureServer: point lookup per listing plus a daily multi-family tile sweep over the search radius; upserts `parcel_facts`. **Required for C-level:** RentCast sale listings carry no unit count; `parcel_facts.units` (from BCPAO land-use/living-units) is the source of truth, with `ceil(bedrooms / 2)` as a flagged fallback when no parcel matches.
 - `components/data-collector` — `CollectListingsWorker` (daily), `ImportParcelsWorker` (daily), `FetchRentEstimatesWorker` (for listings with no estimate; budget-capped).
 - `components/data-analyzer` — pure-Kotlin `FinancingCalculator`, `ProgramRuleEngine`, `ListingScorer`; `AnalyzeListingWorker`.
 - `components/profile` — `BuyerProfile` data class + repository + validation.
