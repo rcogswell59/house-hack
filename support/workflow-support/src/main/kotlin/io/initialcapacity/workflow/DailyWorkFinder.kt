@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap
  * so a long run is not offered again while in flight; a run that throws is offered again once the lease lapses.
  * State is in memory: a restart re-runs today's jobs once, which is harmless because they upsert and budget first.
  */
-class DailyWorkFinder(private val clock: Clock, private val leaseMinutes: Long = 60) : WorkFinder<CollectorTask> {
+class DailyWorkFinder(private val clock: Clock, private val leaseMinutes: Long = 6 * 60) : WorkFinder<CollectorTask> {
     private val lastCompleted = ConcurrentHashMap<String, LocalDate>()
     private val offeredAt = ConcurrentHashMap<String, Instant>()
 

@@ -13,10 +13,11 @@ import kotlinx.serialization.json.doubleOrNull
  */
 class ProgramRuleEngine(private val rules: List<ProgramRule>) {
 
-    fun evaluate(profile: BuyerProfile, price: Double, units: Int, loanAmount: Double): ProgramOutcome {
+    /** [loanAmount] is the first mortgage as financed (incl. upfront MIP); [baseLoanAmount] is price minus down payment, which FHA limits apply to. */
+    fun evaluate(profile: BuyerProfile, price: Double, units: Int, loanAmount: Double, baseLoanAmount: Double = loanAmount): ProgramOutcome {
         val results = rules.map { rule ->
             when (rule.program) {
-                "FHA_LIMITS" -> fhaLimits(rule, units, loanAmount)
+                "FHA_LIMITS" -> fhaLimits(rule, units, baseLoanAmount)
                 "HTH" -> hometownHeroes(rule, profile, loanAmount)
                 "BREVARD_HFA" -> brevardHfa(rule, profile)
                 "SHIP" -> ship(rule, profile)

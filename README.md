@@ -57,6 +57,8 @@ RENTCAST_API_KEY=... docker compose up
 
 The free Postgres expires after 30 days: create a new one, point `DATABASE_URL` at it, redeploy; Flyway recreates the schema and the 2026 program rules.
 
+A free web service sleeps after 15 minutes without traffic, and the daily pipeline only runs while the process is awake. Point a free uptime pinger (e.g. cron-job.org or UptimeRobot) at `/health` every 10 minutes. Restarts are safe: the pipeline is idempotent per day and never spends a second RentCast search call on the same date.
+
 ## Rubric mapping
 
 | Item | Where |

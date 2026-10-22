@@ -69,4 +69,15 @@ class DailyWorkFinderLeaseTest {
 
         assertEquals(1, finder.findRequested("daily-pipeline").size)
     }
+
+    @Test
+    fun default_lease_outlasts_a_long_sweep() {
+        val clock = MutableClock(Instant.parse("2026-10-21T08:00:00Z"))
+        val finder = DailyWorkFinder(clock)
+
+        finder.findRequested("daily-pipeline")
+        clock.now = clock.now.plusSeconds(5 * 3600)
+
+        assertEquals(emptyList(), finder.findRequested("daily-pipeline"))
+    }
 }

@@ -84,4 +84,19 @@ class AnalyzeListingWorkerTest {
 
         assertEquals(listOf(AnalyzeListingTask(stale.id!!, profile.id!!)), tasks)
     }
+
+    @Test
+    fun worker_removes_stale_analysis_when_listing_no_longer_qualifies() {
+        val profile = profiles.save(BuyerProfile.defaults())
+        val saved = listings.upsertSeen(listing("a"), t0)
+        rents.save(RentEstimate(saved.id!!, 1800.0, null, null, 2, null))
+        worker.execute(AnalyzeListingTask(saved.id!!, profile.id!!))
+        assertNotNull(analyses.findForListing(saved.id!!, profile.id!!))
+
+        profiles.save(profile.copy(maxDriveMinutes = 5))   // Cocoa is ~23 min away: no longer qualifies
+        worker.execute(AnalyzeListingTask(saved.id!!, profile.id!!))
+
+        assertNull(analyses.findForListing(saved.id!!, profile.id!!))
+        assertEquals(0, analyses.rankedForProfile(profile.id!!).size)
+    }
 }

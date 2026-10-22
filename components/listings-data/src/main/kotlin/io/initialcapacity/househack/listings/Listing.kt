@@ -23,4 +23,5 @@ data class Listing(
     val active: Boolean = true,
     val lastAnalyzedAt: Instant?,
     val raw: String,
+    val rentEstimateFailedAt: Instant? = null,
 )

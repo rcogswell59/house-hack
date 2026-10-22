@@ -44,7 +44,14 @@ class ImportParcelsWorker(
 
             val lat = listing.lat
             val lng = listing.lng
-            val byPoint = if (lat != null && lng != null) runBlocking { source.parcelAt(lat, lng) } else null
+            val byPoint = if (lat != null && lng != null) {
+                try {
+                    runBlocking { source.parcelAt(lat, lng) }
+                } catch (e: Exception) {
+                    logger.warn("point lookup failed for listing {} ({}); trying address match", id, e.message)
+                    null
+                }
+            } else null
             val match = byPoint?.also { parcels.upsertAll(listOf(it)) }
                 ?: parcels.findByAddressNorm(AddressNormalizer.normalize(listing.address))
 

@@ -5,6 +5,7 @@ import io.initialcapacity.househack.listings.Listing
 import io.initialcapacity.househack.listings.ListingRepository
 import io.initialcapacity.househack.profile.ProfileRepository
 import io.initialcapacity.househack.rentcast.RentCastClient
+import io.initialcapacity.househack.rentcast.RentCastException
 import io.initialcapacity.househack.rentcast.SaleListingDto
 import io.initialcapacity.workflow.CollectorTask
 import io.initialcapacity.workflow.Worker
@@ -33,12 +34,25 @@ class CollectListingsWorker(
         val profile = profiles.findFirst() ?: throw IllegalStateException("no buyer profile yet; create one at /profile")
         val now = clock.instant()
 
+        // Idempotent per day: a process restart or a pipeline retry must not spend a second search call.
+        val alreadySeen = listings.countSeenOn(SOURCE, task.runDate)
+        if (alreadySeen > 0) {
+            logger.info("{} listings already collected on {}; skipping the search", alreadySeen, task.runDate)
+            return
+        }
+
         if (!budget.tryReserve(SOURCE, LocalDate.ofInstant(now, clock.zone), monthlyLimit)) {
             logger.warn("RentCast monthly budget ({}) exhausted; skipping listing collection", monthlyLimit)
             return
         }
 
-        val found = runBlocking { client.searchSaleListings(profile.workplaceLat, profile.workplaceLng, radiusMiles) }
+        val found = try {
+            runBlocking { client.searchSaleListings(profile.workplaceLat, profile.workplaceLng, radiusMiles) }
+        } catch (e: RentCastException) {
+            // Returning normally lets the rest of the pipeline run; tomorrow's run retries the search.
+            logger.warn("RentCast search failed ({}); will retry tomorrow", e.message)
+            return
+        }
         found.forEach { listings.upsertSeen(toListing(it), now) }
         val retired = listings.markInactiveNotSeenSince(SOURCE, now.minus(GRACE))
 

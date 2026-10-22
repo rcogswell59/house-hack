@@ -81,4 +81,25 @@ class CollectListingsWorkerTest {
         assertTrue(e is IllegalStateException, "expected IllegalStateException, got $e")
         assertTrue(client.calls.isEmpty())
     }
+
+    @Test
+    fun collect_skips_the_api_call_when_listings_were_already_seen_today() {
+        worker(day1).execute(task(day1))
+        val later = day1.plusSeconds(3 * 3600)
+
+        worker(later).execute(task(later))   // e.g. the process restarted
+
+        assertEquals(1, client.calls.size)
+        assertEquals(1, budget.callsUsed("rentcast", month))
+    }
+
+    @Test
+    fun collect_logs_and_returns_normally_when_rentcast_fails() {
+        client.failSearch = true
+
+        worker(day1).execute(task(day1))   // must not throw: the pipeline continues and tomorrow retries
+
+        assertEquals(0, listings.findActive().size)
+        assertEquals(1, budget.callsUsed("rentcast", month))
+    }
 }

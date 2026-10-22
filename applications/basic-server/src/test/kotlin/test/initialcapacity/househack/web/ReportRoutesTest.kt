@@ -69,4 +69,16 @@ class ReportRoutesTest {
     fun listing_detail_404_for_unknown_id() = WebTest.run { client ->
         assertEquals(HttpStatusCode.NotFound, client.get("/listings/999999").status)
     }
+
+    @Test
+    fun report_escapes_html_in_third_party_listing_data() = WebTest.run { client ->
+        val profile = WebTest.seedProfile()
+        val evil = WebTest.seedListing("evil", "<script>alert(1)</script> Main St")
+        WebTest.seedAnalysis(evil, profile, 1_500.0)
+
+        val body = client.get("/report").bodyAsText()
+
+        assertTrue(!body.contains("<script>alert(1)</script>"), "script tag must be escaped")
+        assertContains(body, "&lt;script&gt;")
+    }
 }

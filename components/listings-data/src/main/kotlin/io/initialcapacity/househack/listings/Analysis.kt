@@ -38,6 +38,10 @@ class AnalysisRepository(private val db: DatabaseTemplate) {
     fun findForListing(listingId: Long, profileId: Long): Analysis? =
         db.queryOne("select * from analyses where listing_id = ? and profile_id = ?", listingId, profileId, mapper = ::map)
 
+    /** Removes a listing from the ranking when it no longer qualifies for this profile. */
+    fun deleteForListing(listingId: Long, profileId: Long): Int =
+        db.update("delete from analyses where listing_id = ? and profile_id = ?", listingId, profileId)
+
     /** Active listings with an analysis for this profile, cheapest net monthly cost first. */
     fun rankedForProfile(profileId: Long): List<Pair<Analysis, Listing>> = db.query(
         """

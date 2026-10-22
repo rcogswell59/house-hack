@@ -1,6 +1,7 @@
 package io.initialcapacity.househack.web
 
 import freemarker.cache.ClassTemplateLoader
+import freemarker.core.HTMLOutputFormat
 import io.initialcapacity.househack.db.DatabaseConfiguration
 import io.initialcapacity.househack.db.Migrations
 import io.initialcapacity.househack.rentcast.FakeRentCastClient
@@ -39,6 +40,7 @@ fun Application.module(
 ) {
     install(FreeMarker) {
         templateLoader = ClassTemplateLoader(this::class.java.classLoader, "templates")
+        outputFormat = HTMLOutputFormat.INSTANCE   // listing data comes from third parties: escape everything by default
     }
     install(ContentNegotiation) {
         json(Json { prettyPrint = true; ignoreUnknownKeys = true })

@@ -26,9 +26,11 @@ class AnalyzeListingWorker(
 
         val listingId = listing.id!!
         val analysis = analyzer.analyze(profile, listing, parcels.findForListing(listingId), rents.findForListing(listingId))
-        analysis?.let {
-            analyses.upsert(it)
-            logger.info("analyzed listing {}: net monthly cost {}", listingId, "%.0f".format(it.netMonthlyCost))
+        if (analysis != null) {
+            analyses.upsert(analysis)
+            logger.info("analyzed listing {}: net monthly cost {}", listingId, "%.0f".format(analysis.netMonthlyCost))
+        } else if (analyses.deleteForListing(listingId, profile.id!!) > 0) {
+            logger.info("listing {} no longer qualifies; removed from the ranking", listingId)
         }
         // Unscoreable listings leave the queue too; they re-enter when a rent estimate, parcel, or profile change arrives.
         listings.markAnalyzed(listingId, Instant.now())

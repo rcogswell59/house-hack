@@ -58,6 +58,7 @@ class FakeParcelSource : ParcelSource {
     val byPoint = mutableMapOf<Pair<Double, Double>, ParcelFact>()
     var sweepResults: List<ParcelFact> = emptyList()
     var failWhen: (Envelope) -> Boolean = { false }
+    var failPoints: Set<Pair<Double, Double>> = emptySet()
     val pointLookups = mutableListOf<Pair<Double, Double>>()
     val sweptTiles = mutableListOf<Envelope>()
 
@@ -69,6 +70,7 @@ class FakeParcelSource : ParcelSource {
 
     override suspend fun parcelAt(lat: Double, lng: Double): ParcelFact? {
         pointLookups += lat to lng
+        if ((lat to lng) in failPoints) throw IllegalStateException("ArcGIS error: simulated failure at $lat,$lng")
         return byPoint[lat to lng]
     }
 }

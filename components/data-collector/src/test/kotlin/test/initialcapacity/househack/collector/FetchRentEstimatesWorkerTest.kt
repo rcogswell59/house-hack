@@ -90,4 +90,21 @@ class FetchRentEstimatesWorkerTest {
         assertEquals(45, budget.callsUsed("rentcast", month))
         assertEquals(2, listings.findWithoutRentEstimate(10).size)
     }
+
+    @Test
+    fun rent_failure_for_one_listing_does_not_stop_the_others_and_is_not_retried_soon() {
+        val bad = listings.upsertSeen(listing(1), now.minusSeconds(60))   // oldest first
+        val ok1 = listings.upsertSeen(listing(2), now)
+        val ok2 = listings.upsertSeen(listing(3), now)
+        client.failForAddresses = setOf("1 Main St, Cocoa, FL 32922")
+
+        worker().execute(task)
+
+        assertNotNull(rents.findForListing(ok1.id!!))
+        assertNotNull(rents.findForListing(ok2.id!!))
+        assertEquals(null, rents.findForListing(bad.id!!))
+        assertEquals(3, budget.callsUsed("rentcast", month))
+        assertEquals(emptyList(), listings.findWithoutRentEstimate(10, retryFailedAfter = now).map { it.id })   // parked, not re-offered
+        assertEquals(listOf(bad.id), listings.findWithoutRentEstimate(10, retryFailedAfter = now.plusSeconds(8 * 86_400)).map { it.id })
+    }
 }

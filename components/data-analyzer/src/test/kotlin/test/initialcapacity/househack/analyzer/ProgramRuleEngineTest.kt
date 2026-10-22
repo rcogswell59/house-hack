@@ -118,4 +118,11 @@ class ProgramRuleEngineTest {
         assertEquals(setOf("FHA_LIMITS", "HTH", "BREVARD_HFA", "SHIP", "HOMESTEAD"), seeded.map { it.program }.toSet())
         assertEquals(693050.0, seeded.single { it.program == "FHA_LIMITS" }.params["2"].toString().toDouble())
     }
+
+    @Test
+    fun fha_limit_is_checked_against_the_base_loan_not_the_financed_mip() {
+        // $715k duplex: base loan 689,975 is under the 693,050 limit; with UFMIP financed (702,050) it would not be.
+        val fha = result(engine.evaluate(ryan, 715_000.0, 2, loanAmount = 702_050.0, baseLoanAmount = 689_975.0), "FHA_LIMITS")
+        assertTrue(fha.eligible, "${fha.reasons}")
+    }
 }

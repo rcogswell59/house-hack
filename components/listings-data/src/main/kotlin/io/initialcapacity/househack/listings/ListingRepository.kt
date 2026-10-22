@@ -30,10 +30,25 @@ class ListingRepository(private val db: DatabaseTemplate) {
 
     fun findActive(): List<Listing> = db.query("select * from listings where active order by id", mapper = ::map)
 
-    fun findWithoutRentEstimate(limit: Int): List<Listing> = db.query(
-        "select l.* from listings l left join rent_estimates r on r.listing_id = l.id where l.active and r.listing_id is null order by l.first_seen, l.id limit ?",
-        limit, mapper = ::map,
+    /** Active listings with no rent estimate, oldest first; a failed attempt parks the listing for [RETRY_FAILED_AFTER_DAYS]. */
+    fun findWithoutRentEstimate(limit: Int, retryFailedAfter: Instant = Instant.now()): List<Listing> = db.query(
+        """
+        select l.* from listings l left join rent_estimates r on r.listing_id = l.id
+        where l.active and r.listing_id is null
+          and (l.rent_estimate_failed_at is null or l.rent_estimate_failed_at + interval '$RETRY_FAILED_AFTER_DAYS days' <= ?)
+        order by l.first_seen, l.id limit ?
+        """,
+        retryFailedAfter, limit, mapper = ::map,
     )
+
+    fun markRentEstimateFailed(id: Long, at: Instant) {
+        db.update("update listings set rent_estimate_failed_at = ? where id = ?", at, id)
+    }
+
+    /** How many listings from [source] were already seen on [date] (UTC); non-zero means today's search already ran. */
+    fun countSeenOn(source: String, date: java.time.LocalDate): Int = db.queryOne(
+        "select count(*) from listings where source = ? and (last_seen at time zone 'UTC')::date = ?", source, date,
+    ) { it.getInt(1) }!!
 
     /** Active listings never analyzed, or analyzed before any of their inputs (listing, rent, parcel, profile) last changed. */
     fun findStaleForAnalysis(profileUpdatedAt: Instant): List<Listing> = db.query(
@@ -56,6 +71,8 @@ class ListingRepository(private val db: DatabaseTemplate) {
     }
 
     companion object {
+        const val RETRY_FAILED_AFTER_DAYS = 7
+
         fun map(rs: ResultSet) = Listing(
             id = rs.getLong("id"),
             source = rs.getString("source"),
@@ -77,6 +94,7 @@ class ListingRepository(private val db: DatabaseTemplate) {
             active = rs.getBoolean("active"),
             lastAnalyzedAt = rs.getTimestamp("last_analyzed_at")?.toInstant(),
             raw = rs.getString("raw"),
+            rentEstimateFailedAt = rs.getTimestamp("rent_estimate_failed_at")?.toInstant(),
         )
     }
 }

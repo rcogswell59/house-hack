@@ -57,6 +57,19 @@ class ImportParcelsWorkerTest {
     }
 
     @Test
+    fun link_continues_when_a_point_lookup_throws() {
+        val boom = listings.upsertSeen(listing("boom", "1 Boom St", 28.30, -80.70), now)
+        val fine = listings.upsertSeen(listing("fine", "1209 N Indian River Dr", 28.3627, -80.7276), now)
+        source.failPoints = setOf(28.30 to -80.70)
+        source.byPoint[28.3627 to -80.7276] = fact("P-A", "1209 N INDIAN RIVER DR")
+
+        ImportParcelsWorker(source, parcels, listings, profiles, sweep = false).execute(task)
+
+        assertNull(parcels.findForListing(boom.id!!))
+        assertEquals("P-A", parcels.findForListing(fine.id!!)?.parcelId)
+    }
+
+    @Test
     fun worker_falls_back_to_address_match_when_point_misses() {
         val a = listings.upsertSeen(listing("a", "1141 N. Indian River Drive", 28.36, -80.72), now)
         parcels.upsertAll(listOf(fact("P-ADDR", "1141 N INDIAN RIVER DR")))

@@ -105,4 +105,13 @@ class ListingAnalyzerTest {
     fun analyze_returns_null_without_coordinates() {
         assertNull(analyzer.analyze(ryan, listing.copy(lat = null), parcel, rent))
     }
+
+    @Test
+    fun analyze_marks_lender_fail_when_loan_exceeds_fha_limit() {
+        val a = analyzer.analyze(ryan, listing.copy(price = 750_000.0), parcel, rent)
+
+        assertNotNull(a)
+        assertEquals(false, a.lenderPass)
+        assertTrue(a.programResultsJson.contains("FHA_LIMITS"))
+    }
 }

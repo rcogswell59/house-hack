@@ -54,10 +54,13 @@ class ListingAnalyzer(private val engine: ProgramRuleEngine, private val default
             otherMonthlyDebts = profile.otherMonthlyDebts, assistanceTotal = 0.0,
         )
         val loanAmount = FinancingCalculator.buyerView(base).loanAmount
-        val programs = engine.evaluate(profile, listing.price, units, loanAmount)
+        val baseLoan = listing.price * (1 - base.downPaymentRate)
+        val programs = engine.evaluate(profile, listing.price, units, loanAmount, baseLoan)
         val inputs = base.copy(assistanceTotal = programs.totalAssistance)
         val buyer = FinancingCalculator.buyerView(inputs)
         val lender = FinancingCalculator.lenderView(inputs)
+        // The report's "lender" badge must mean "a lender would approve this": DTI, self-sufficiency, and the FHA loan limit.
+        val withinFhaLimit = programs.results.none { it.program == "FHA_LIMITS" && !it.eligible }
 
         return Analysis(
             id = null,
@@ -66,7 +69,7 @@ class ListingAnalyzer(private val engine: ProgramRuleEngine, private val default
             runAt = null,
             netMonthlyCost = buyer.netMonthlyCost,
             cashToClose = buyer.cashToClose,
-            lenderPass = lender.pass,
+            lenderPass = lender.pass && withinFhaLimit,
             selfSufficiencyRatio = lender.selfSufficiencyRatio,
             dti = lender.dti,
             driveMinutes = driveMinutes,

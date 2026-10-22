@@ -7,14 +7,18 @@ class FakeRentCastClient(
 ) : RentCastClient {
 
     val calls = mutableListOf<String>()
+    var failSearch = false
+    var failForAddresses: Set<String> = emptySet()
 
     override suspend fun searchSaleListings(lat: Double, lng: Double, radiusMiles: Double, propertyType: String, limit: Int): List<SaleListingDto> {
         calls += "searchSaleListings"
+        if (failSearch) throw RentCastException(503, """{"error":"simulated outage"}""")
         return listings
     }
 
     override suspend fun rentEstimate(address: String, propertyType: String, bedrooms: Int?, bathrooms: Double?, sqft: Int?): RentEstimateDto {
         calls += "rentEstimate(bedrooms=$bedrooms)"
+        if (address in failForAddresses) throw RentCastException(404, """{"error":"no estimate for $address"}""")
         return rent
     }
 
