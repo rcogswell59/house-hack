@@ -1,5 +1,7 @@
 package io.initialcapacity.househack.analyzer
 
+import kotlinx.serialization.Serializable
+
 /** Everything the financing math needs for one listing and one buyer. Rates are fractions (0.065 = 6.5%). */
 data class FinancingInputs(
     val price: Double,
@@ -22,6 +24,7 @@ data class FinancingInputs(
 )
 
 /** What the buyer actually pays each month and brings to closing. The ranking number is [netMonthlyCost]. */
+@Serializable
 data class BuyerView(
     val loanAmount: Double,
     val principalAndInterest: Double,
@@ -35,6 +38,7 @@ data class BuyerView(
 )
 
 /** FHA underwriting view: 75% of other-unit rent counts, and 3-4 units must be self-sufficient. Never blended with [BuyerView]. */
+@Serializable
 data class LenderView(
     val piti: Double,
     val qualifyingRent: Double,
