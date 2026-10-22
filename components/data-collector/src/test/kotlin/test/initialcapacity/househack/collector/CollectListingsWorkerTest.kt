@@ -73,11 +73,12 @@ class CollectListingsWorkerTest {
     }
 
     @Test
-    fun collect_does_nothing_without_a_profile() {
+    fun collect_without_a_profile_throws_so_the_day_is_not_marked_done() {
         TestDatabase.truncateAll()
 
-        worker(day1).execute(task(day1))
+        val e = runCatching { worker(day1).execute(task(day1)) }.exceptionOrNull()
 
+        assertTrue(e is IllegalStateException, "expected IllegalStateException, got $e")
         assertTrue(client.calls.isEmpty())
     }
 }

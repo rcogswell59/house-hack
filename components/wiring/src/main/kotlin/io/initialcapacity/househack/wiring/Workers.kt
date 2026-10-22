@@ -1,4 +1,4 @@
-package io.initialcapacity.househack.web
+package io.initialcapacity.househack.wiring
 
 import io.initialcapacity.househack.analyzer.AnalyzeListingTask
 import io.initialcapacity.househack.analyzer.AnalyzeListingWorker
@@ -13,6 +13,7 @@ import io.initialcapacity.househack.parcels.ParcelSource
 import io.initialcapacity.househack.rentcast.RentCastClient
 import io.initialcapacity.workflow.CollectorTask
 import io.initialcapacity.workflow.DailyWorkFinder
+import io.initialcapacity.workflow.SequentialWorker
 import io.initialcapacity.workflow.WorkScheduler
 import io.initialcapacity.workflow.Worker
 import java.time.Clock
@@ -41,13 +42,21 @@ object Workers {
         }.also { it.start() }
     }
 
+    /**
+     * One daily pipeline, in dependency order: listings → parcel links (unit counts) → rent estimates → the slow
+     * county-wide parcel sweep. Polled every 5 minutes; DailyWorkFinder runs it once per day and leases an in-flight run.
+     */
     fun collector(deps: Dependencies, rentCast: RentCastClient, clock: Clock, parcelSource: ParcelSource): WorkScheduler<CollectorTask> {
-        val workers: MutableList<Worker<CollectorTask>> = mutableListOf(
-            CollectListingsWorker(rentCast, deps.listings, deps.budget, deps.profiles, clock),
-            ImportParcelsWorker(parcelSource, deps.parcels, deps.listings, deps.profiles),
-            FetchRentEstimatesWorker(rentCast, deps.listings, deps.rents, deps.parcels, deps.budget, clock),
+        val pipeline: Worker<CollectorTask> = SequentialWorker(
+            "daily-pipeline",
+            listOf(
+                CollectListingsWorker(rentCast, deps.listings, deps.budget, deps.profiles, clock),
+                ImportParcelsWorker(parcelSource, deps.parcels, deps.listings, deps.profiles, link = true, sweep = false, name = "link-parcels"),
+                FetchRentEstimatesWorker(rentCast, deps.listings, deps.rents, deps.parcels, deps.budget, clock),
+                ImportParcelsWorker(parcelSource, deps.parcels, deps.listings, deps.profiles, link = false, sweep = true, name = "sweep-parcels"),
+            ),
         )
-        return WorkScheduler(DailyWorkFinder(clock), workers, delay = 3600)
+        return WorkScheduler(DailyWorkFinder(clock), mutableListOf(pipeline), delay = 300)
     }
 
     fun analyzer(deps: Dependencies, clock: Clock): WorkScheduler<AnalyzeListingTask> {

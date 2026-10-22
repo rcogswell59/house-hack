@@ -1,4 +1,4 @@
-package io.initialcapacity.househack.web
+package io.initialcapacity.househack.wiring
 
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call

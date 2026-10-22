@@ -6,6 +6,7 @@ import io.initialcapacity.househack.listings.Analysis
 import io.initialcapacity.househack.listings.Listing
 import io.initialcapacity.househack.profile.BuyerProfile
 import io.initialcapacity.househack.profile.ProfileValidator
+import io.initialcapacity.househack.wiring.Dependencies
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.call
 import io.ktor.server.request.receive

@@ -10,14 +10,17 @@ import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 
 /**
- * Daily: (1) link every active listing without a parcel via point lookup, falling back to a normalized-address match;
- * (2) sweep the buyer's search radius tile by tile for multi-family parcels so the analyzer has unit counts and values.
+ * Two daily jobs behind one class, selected by [link] and [sweep]:
+ * link — give every active listing without a parcel one via point lookup (fallback: normalized-address match);
+ * sweep — tile the buyer's search radius and upsert every multi-family parcel so unit counts and values are on hand.
+ * The pipeline runs link before rent estimates and the slow sweep last.
  */
 class ImportParcelsWorker(
     private val source: ParcelSource,
     private val parcels: ParcelFactRepository,
     private val listings: ListingRepository,
     private val profiles: ProfileRepository,
+    private val link: Boolean = true,
     private val sweep: Boolean = true,
     private val tileDegrees: Double = 0.1,
     private val radiusMiles: Double = 30.0,
@@ -26,9 +29,10 @@ class ImportParcelsWorker(
     private val logger = LoggerFactory.getLogger(this.javaClass)
 
     override fun execute(task: CollectorTask) {
-        val profile = profiles.findFirst() ?: run { logger.warn("no profile yet; skipping parcel import"); return }
+        // Throwing (rather than returning) keeps the scheduler from marking today's run complete before a profile exists.
+        val profile = profiles.findFirst() ?: throw IllegalStateException("no buyer profile yet; create one at /profile")
 
-        linkListings()
+        if (link) linkListings()
         if (sweep) sweepRadius(profile.workplaceLat, profile.workplaceLng)
     }
 
@@ -58,14 +62,24 @@ class ImportParcelsWorker(
         val tiles = Envelope.around(lat, lng, radiusMiles).tiles(tileDegrees)
         var imported = 0
         tiles.forEachIndexed { i, tile ->
-            try {
-                val facts = runBlocking { source.multiFamilyParcels(tile) }
-                imported += parcels.upsertAll(facts)
-                logger.info("tile {}/{}: {} multi-family parcels", i + 1, tiles.size, facts.size)
-            } catch (e: Exception) {
-                logger.warn("tile {}/{} failed: {}", i + 1, tiles.size, e.message)
-            }
+            imported += fetchTile(tile, "${i + 1}/${tiles.size}", retry = true)
         }
         logger.info("sweep complete: {} parcel rows upserted across {} tiles", imported, tiles.size)
     }
+
+    /** Dense tiles can exceed the server's time limit; one retry as four quadrants recovers most of them. */
+    private fun fetchTile(tile: Envelope, label: String, retry: Boolean): Int =
+        try {
+            val facts = runBlocking { source.multiFamilyParcels(tile) }
+            logger.info("tile {}: {} multi-family parcels", label, facts.size)
+            parcels.upsertAll(facts)
+        } catch (e: Exception) {
+            if (retry) {
+                logger.warn("tile {} failed ({}); retrying as four quadrants", label, e.message)
+                tile.quadrants().withIndex().sumOf { (q, quadrant) -> fetchTile(quadrant, "$label.${q + 1}", retry = false) }
+            } else {
+                logger.warn("tile {} failed again: {}", label, e.message)
+                0
+            }
+        }
 }

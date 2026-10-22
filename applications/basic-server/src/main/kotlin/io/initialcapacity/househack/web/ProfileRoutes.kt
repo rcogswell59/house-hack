@@ -2,6 +2,7 @@ package io.initialcapacity.househack.web
 
 import io.initialcapacity.househack.profile.BuyerProfile
 import io.initialcapacity.househack.profile.ProfileValidator
+import io.initialcapacity.househack.wiring.Dependencies
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters

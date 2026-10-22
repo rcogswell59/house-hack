@@ -29,7 +29,8 @@ class CollectListingsWorker(
     private val logger = LoggerFactory.getLogger(this.javaClass)
 
     override fun execute(task: CollectorTask) {
-        val profile = profiles.findFirst() ?: run { logger.warn("no profile yet; skipping listing collection"); return }
+        // Throwing (rather than returning) keeps the scheduler from marking today's run complete before a profile exists.
+        val profile = profiles.findFirst() ?: throw IllegalStateException("no buyer profile yet; create one at /profile")
         val now = clock.instant()
 
         if (!budget.tryReserve(SOURCE, LocalDate.ofInstant(now, clock.zone), monthlyLimit)) {

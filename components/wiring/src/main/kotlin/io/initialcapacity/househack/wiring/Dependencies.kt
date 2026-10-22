@@ -1,4 +1,4 @@
-package io.initialcapacity.househack.web
+package io.initialcapacity.househack.wiring
 
 import io.initialcapacity.househack.analyzer.ProgramRuleRepository
 import io.initialcapacity.househack.db.DatabaseTemplate

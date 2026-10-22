@@ -20,6 +20,16 @@ data class Envelope(val minLng: Double, val minLat: Double, val maxLng: Double, 
         return result
     }
 
+    /** The four equal quadrants of this envelope, for retrying a tile the server refused. */
+    fun quadrants(): List<Envelope> {
+        val midLng = round((minLng + maxLng) / 2)
+        val midLat = round((minLat + maxLat) / 2)
+        return listOf(
+            Envelope(minLng, minLat, midLng, midLat), Envelope(midLng, minLat, maxLng, midLat),
+            Envelope(minLng, midLat, midLng, maxLat), Envelope(midLng, midLat, maxLng, maxLat),
+        )
+    }
+
     companion object {
         private const val EPSILON = 1e-9
 
@@ -47,11 +57,13 @@ interface ParcelSource {
 class FakeParcelSource : ParcelSource {
     val byPoint = mutableMapOf<Pair<Double, Double>, ParcelFact>()
     var sweepResults: List<ParcelFact> = emptyList()
+    var failWhen: (Envelope) -> Boolean = { false }
     val pointLookups = mutableListOf<Pair<Double, Double>>()
     val sweptTiles = mutableListOf<Envelope>()
 
     override suspend fun multiFamilyParcels(envelope: Envelope): List<ParcelFact> {
         sweptTiles += envelope
+        if (failWhen(envelope)) throw IllegalStateException("ArcGIS error: simulated failure for $envelope")
         return sweepResults
     }
 

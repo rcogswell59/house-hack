@@ -3,7 +3,7 @@ package test.initialcapacity.househack.web
 import io.initialcapacity.househack.listings.Analysis
 import io.initialcapacity.househack.listings.Listing
 import io.initialcapacity.househack.profile.BuyerProfile
-import io.initialcapacity.househack.web.Dependencies
+import io.initialcapacity.househack.wiring.Dependencies
 import io.initialcapacity.househack.web.module
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation

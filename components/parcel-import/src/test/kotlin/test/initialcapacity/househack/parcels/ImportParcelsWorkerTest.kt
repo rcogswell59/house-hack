@@ -91,12 +91,52 @@ class ImportParcelsWorkerTest {
     }
 
     @Test
-    fun worker_does_nothing_without_profile() {
+    fun worker_without_profile_throws_so_the_day_is_not_marked_done() {
         TestDatabase.truncateAll()
         listings.upsertSeen(listing("a", "1 Main St", 28.36, -80.72), now)
 
-        ImportParcelsWorker(source, parcels, listings, profiles, sweep = true).execute(task)
+        val e = runCatching { ImportParcelsWorker(source, parcels, listings, profiles, sweep = true).execute(task) }.exceptionOrNull()
 
+        assertTrue(e is IllegalStateException, "expected IllegalStateException, got $e")
         assertTrue(source.pointLookups.isEmpty() && source.sweptTiles.isEmpty())
+    }
+}
+
+class ImportParcelsWorkerSweepTest {
+    private val db = io.initialcapacity.househack.db.DatabaseTemplate(TestDatabase.dataSource)
+    private val listings = ListingRepository(db)
+    private val parcels = ParcelFactRepository(db)
+    private val profiles = ProfileRepository(db)
+    private val source = FakeParcelSource()
+    private val task = CollectorTask("sweep-parcels", LocalDate.of(2026, 10, 21))
+
+    @Before
+    fun setUp() {
+        TestDatabase.truncateAll()
+        profiles.save(BuyerProfile.defaults())
+    }
+
+    @Test
+    fun link_false_skips_point_lookups_and_only_sweeps() {
+        listings.upsertSeen(Listing(null, "rentcast", "a", "1 Main St", "Cocoa", "32922", 28.36, -80.72, 400_000.0, 4, 2.0, 1800, 1975,
+            "Multi-Family", null, null, null, true, null, "{}"), Instant.parse("2026-10-21T06:00:00Z"))
+
+        ImportParcelsWorker(source, parcels, listings, profiles, link = false, sweep = true, tileDegrees = 0.5).execute(task)
+
+        assertTrue(source.pointLookups.isEmpty())
+        assertTrue(source.sweptTiles.isNotEmpty())
+    }
+
+    @Test
+    fun failed_tile_is_split_into_quadrants_and_retried() {
+        source.failWhen = { it.maxLng - it.minLng > 0.3 }   // every full-size tile fails, quadrants succeed
+        source.sweepResults = listOf(ParcelFact("Q", "1 Q ST", "COCOA", "32922", 1.0, 1.0, null, null, 1970, 2, "008", null))
+
+        ImportParcelsWorker(source, parcels, listings, profiles, link = false, sweep = true, tileDegrees = 0.5).execute(task)
+
+        val big = source.sweptTiles.count { it.maxLng - it.minLng > 0.3 }
+        val small = source.sweptTiles.count { it.maxLng - it.minLng <= 0.3 }
+        assertTrue(big > 0 && small == big * 4, "expected 4 quadrants per failed tile, got big=$big small=$small")
+        assertNotNull(parcels.findByAddressNorm("1 Q ST"))
     }
 }

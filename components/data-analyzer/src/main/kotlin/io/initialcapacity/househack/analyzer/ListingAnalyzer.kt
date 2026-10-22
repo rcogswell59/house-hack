@@ -35,7 +35,8 @@ class ListingAnalyzer(private val engine: ProgramRuleEngine, private val default
         val driveMinutes = DriveTimeEstimator.minutes(lat, lng, profile.workplaceLat, profile.workplaceLng, profile.roadFactor, profile.avgSpeedMph)
         if (driveMinutes > profile.maxDriveMinutes) return skip(listing, "drive ${"%.0f".format(driveMinutes)} min exceeds ${profile.maxDriveMinutes}")
 
-        val parcelUnits = parcel?.units
+        // County rolls record 0 units for non-residential or unrecorded parcels; treat that as unknown.
+        val parcelUnits = parcel?.units?.takeIf { it > 0 }
         val bedrooms = listing.bedrooms
         val (units, unitsSource) = when {
             parcelUnits != null -> parcelUnits to "parcel"

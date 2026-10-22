@@ -6,6 +6,9 @@ import io.initialcapacity.househack.db.Migrations
 import io.initialcapacity.househack.rentcast.FakeRentCastClient
 import io.initialcapacity.househack.rentcast.HttpRentCastClient
 import io.initialcapacity.househack.rentcast.RentCastClient
+import io.initialcapacity.househack.wiring.Dependencies
+import io.initialcapacity.househack.wiring.Workers
+import io.initialcapacity.househack.wiring.healthRoute
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application

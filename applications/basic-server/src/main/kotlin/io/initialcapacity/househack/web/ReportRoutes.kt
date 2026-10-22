@@ -5,6 +5,7 @@ import io.initialcapacity.househack.analyzer.ListingAnalyzer
 import io.initialcapacity.househack.analyzer.ProgramOutcome
 import io.initialcapacity.househack.listings.Analysis
 import io.initialcapacity.househack.listings.Listing
+import io.initialcapacity.househack.wiring.Dependencies
 import io.ktor.server.application.call
 import io.ktor.server.freemarker.FreeMarkerContent
 import io.ktor.server.response.respond

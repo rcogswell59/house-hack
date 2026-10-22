@@ -10,6 +10,7 @@ include(
     "components:listings-data",
     "components:rentcast-client",
     "components:parcel-import",
+    "components:wiring",
     "components:data-analyzer",
 
     "support:database-support",

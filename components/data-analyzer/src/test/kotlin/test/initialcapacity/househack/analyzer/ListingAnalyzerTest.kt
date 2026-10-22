@@ -79,6 +79,18 @@ class ListingAnalyzerTest {
     }
 
     @Test
+    fun analyze_uses_bedroom_fallback_when_parcel_units_is_zero_or_null() {
+        for (units in listOf(0, null)) {
+            val a = analyzer.analyze(ryan, listing, parcel.copy(units = units), rent)
+
+            assertNotNull(a, "units=$units should fall back to bedrooms")
+            val breakdown = Json.parseToJsonElement(a.breakdownJson).jsonObject
+            assertEquals("bedrooms_fallback", breakdown["unitsSource"]!!.jsonPrimitive.content)
+            assertEquals("parcel", breakdown["millageSource"]!!.jsonPrimitive.content)  // parcel still supplies millage
+        }
+    }
+
+    @Test
     fun analyze_returns_null_without_parcel_or_bedrooms() {
         assertNull(analyzer.analyze(ryan, listing.copy(bedrooms = null), parcel = null, rent = rent))
     }

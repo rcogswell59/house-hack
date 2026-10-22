@@ -1,0 +1,27 @@
+# Render Blueprint: free tier. One web service runs the Ktor app plus both schedulers in-process
+# (RUN_WORKERS). To split into real background workers later, add two "worker" services with
+# APP pointing at the collector/analyzer jars and clear RUN_WORKERS here.
+services:
+  - type: web
+    name: househack-web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: APP
+        value: /opt/applications/basic-server.jar
+      - key: RUN_WORKERS
+        value: collector,analyzer
+      - key: DATABASE_URL
+        fromDatabase:
+          name: househack-db
+          property: connectionString
+      - key: RENTCAST_API_KEY
+        sync: false   # set in the Render dashboard; never committed
+
+databases:
+  - name: househack-db
+    plan: free       # expires after 30 days on the free plan: recreate, redeploy, migrations re-run
+    databaseName: househack
+    user: househack

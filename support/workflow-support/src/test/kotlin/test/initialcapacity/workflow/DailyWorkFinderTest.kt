@@ -33,11 +33,40 @@ class DailyWorkFinderTest {
     }
 
     @Test
-    fun unfinished_task_is_offered_again() {
-        val finder = DailyWorkFinder(Clock.fixed(Instant.parse("2026-10-21T08:00:00Z"), ZoneOffset.UTC))
+    fun unfinished_task_is_offered_again_once_its_lease_lapses() {
+        val finder = DailyWorkFinder(Clock.fixed(Instant.parse("2026-10-21T08:00:00Z"), ZoneOffset.UTC), leaseMinutes = 0)
 
         finder.findRequested("collect-listings")
 
         assertEquals(1, finder.findRequested("collect-listings").size)
+    }
+}
+
+class DailyWorkFinderLeaseTest {
+    private class MutableClock(var now: Instant) : Clock() {
+        override fun getZone() = ZoneOffset.UTC
+        override fun withZone(zone: java.time.ZoneId) = this
+        override fun instant() = now
+    }
+
+    @Test
+    fun offered_task_is_not_offered_again_while_its_lease_is_live() {
+        val clock = MutableClock(Instant.parse("2026-10-21T08:00:00Z"))
+        val finder = DailyWorkFinder(clock, leaseMinutes = 60)
+
+        assertEquals(1, finder.findRequested("daily-pipeline").size)
+        clock.now = clock.now.plusSeconds(5 * 60)
+        assertEquals(emptyList(), finder.findRequested("daily-pipeline"))
+    }
+
+    @Test
+    fun failed_task_is_offered_again_after_the_lease_expires() {
+        val clock = MutableClock(Instant.parse("2026-10-21T08:00:00Z"))
+        val finder = DailyWorkFinder(clock, leaseMinutes = 60)
+
+        finder.findRequested("daily-pipeline")   // never marked completed (the run threw)
+        clock.now = clock.now.plusSeconds(61 * 60)
+
+        assertEquals(1, finder.findRequested("daily-pipeline").size)
     }
 }
