@@ -6,6 +6,7 @@ include(
     "applications:data-collector-server",
 
     "components:data-collector",
+    "components:profile",
     "components:data-analyzer",
 
     "support:database-support",
