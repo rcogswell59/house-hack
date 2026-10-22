@@ -18,9 +18,9 @@ First version: one profile — Ryan. First-time buyer, ~$118k base income, 700+ 
 | Property types | 2, 3, 4 units | SFH+ADU/room-rent and rehab/203(k) deferred. |
 | AI | None in v1 | Keeps C-level items deterministic and testable. Per-listing plain-English summaries are a planned A-level addition. |
 | Data: listings + rent | RentCast API, free tier (50 req/month) | Only legal programmatic source found with sale listings + rent AVM; licensing allows storage and display. |
-| Data: parcels/taxes | Brevard County Property Appraiser bulk download (free, daily) | Free enrichment; genuine big-data component. |
+| Data: parcels/taxes | Florida DOR statewide cadastral FeatureServer (ArcGIS REST; point lookups + daily multi-family tile sweep). *Changed 2026-10-21:* the BCPAO bulk download is behind a Cloudflare bot challenge. See research/parcel-data-source.md | Free, machine-fetchable; supplies unit counts (NO_RES_UNT), just/assessed value, year built. Millage not included (county-average default until a millage table is loaded). |
 | Persistence | PostgreSQL | Render free tier; standard for the course. |
-| Deploy | Render (web + 2 workers + Postgres) | Starter already has Dockerfile + Procfile. |
+| Deploy | Render free tier: one web service running both schedulers in-process (`RUN_WORKERS`) + free Postgres | Free workers don't exist on Render; locally and in compose the three processes stay separate. |
 | Ops | Daily collector run; ranked report page; email alert when a listing enters top 10 (later) | Alerts become the "event collaboration/messaging" A-level item. |
 | Tests | JUnit; RentCast client mocked/faked | B-level "test doubles" item. |
 | Timeline assumption | Buying in 6–12 months | Program limits are parameterized by year (2026 now; 2027 when published). |
