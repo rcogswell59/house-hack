@@ -8,6 +8,7 @@ include(
     "components:data-collector",
     "components:profile",
     "components:listings-data",
+    "components:rentcast-client",
     "components:data-analyzer",
 
     "support:database-support",

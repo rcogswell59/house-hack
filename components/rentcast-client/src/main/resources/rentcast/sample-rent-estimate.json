@@ -1,0 +1,13 @@
+{
+  "rent": 1800,
+  "rentRangeLow": 1700,
+  "rentRangeHigh": 1900,
+  "subjectProperty": {
+    "id": "215-Dixon-Blvd,-Cocoa,-FL-32922",
+    "formattedAddress": "215 Dixon Blvd, Cocoa, FL 32922",
+    "propertyType": "Multi-Family",
+    "bedrooms": 2,
+    "bathrooms": 1
+  },
+  "comparables": []
+}
